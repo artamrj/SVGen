@@ -23,9 +23,10 @@ fn is_wrappable_safe_element(raw: &str) -> bool {
     if raw.contains(':') || raw.contains("<svg") || raw.contains("<?xml") {
         return false;
     }
-    WRAPPABLE_TAGS
-        .iter()
-        .any(|tag| raw.starts_with(&format!("<{tag}")) && (raw.ends_with("/>") || raw.ends_with(&format!("</{tag}>"))))
+    WRAPPABLE_TAGS.iter().any(|tag| {
+        raw.starts_with(&format!("<{tag}"))
+            && (raw.ends_with("/>") || raw.ends_with(&format!("</{tag}>")))
+    })
 }
 
 #[cfg(test)]

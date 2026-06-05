@@ -10,4 +10,4 @@ def test_train_config_loads() -> None:
 
 def test_generation_config_loads() -> None:
     config = load_config("configs/generation_default.json")
-    assert config["model"] == "SVGen 0.2"
+    assert config["model"] == "SVGen 0.2.5 Tiny Generator"

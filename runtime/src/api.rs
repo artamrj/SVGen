@@ -17,11 +17,13 @@ pub struct GenerationResponse {
 }
 
 #[cfg(feature = "api")]
-pub async fn generate_endpoint(axum::Json(request): axum::Json<GenerationRequest>) -> axum::Json<GenerationResponse> {
-    let _ = (request.style, request.size);
+pub async fn generate_endpoint(
+    axum::Json(request): axum::Json<GenerationRequest>,
+) -> axum::Json<GenerationResponse> {
+    let _ = (request.prompt, request.style, request.size);
     axum::Json(GenerationResponse {
-        svg: r#"<svg viewBox="0 0 24 24"><path d="M4 12 L12 4 L20 12 L20 20 L4 20 Z"/></svg>"#.to_string(),
+        svg: crate::generate::fallback_home_svg().to_string(),
         valid: true,
-        model: "SVGen 0.1".to_string(),
+        model: "SVGen 0.2.5 Tiny Generator".to_string(),
     })
 }

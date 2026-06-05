@@ -18,7 +18,7 @@ SVGen uses JSON Lines. Each line contains one text-to-SVG pair.
 - Remove scripts, external references, filters, masks, styles, embedded images, and unsupported tags.
 - Use simple geometry where possible: `path`, `circle`, `rect`, `line`, `polyline`, `polygon`, and `g`.
 
-## SVGen 0.2 Data
+## SVGen 0.2.5 Data
 
 `data/train_1000.jsonl` is generated from Lucide SVGs. Prompts are generated from filenames:
 

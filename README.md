@@ -1,10 +1,10 @@
 # SVGen
 
-SVGen is a text-to-SVG model project. SVGen 0.2 moves the scaffold into a real training MVP: validated Lucide-derived data, tokenizer artifacts, a tiny PyTorch training path, export artifacts, and a Rust-safe output path.
+SVGen is a text-to-SVG model project. SVGen 0.2.5 Tiny Generator is a truthful training/runtime milestone: validated Lucide-derived data, tokenizer artifacts, a tiny PyTorch training path, export artifacts, and a Rust-safe fallback output path.
 
-Display name: `SVGen 0.2`
+Display name: `SVGen 0.2.5 Tiny Generator`
 
-Artifact path: `exports/svgen-0.2/`
+Artifact path: `exports/svgen-0.2.5/`
 
 ## Architecture
 
@@ -12,8 +12,8 @@ Artifact path: `exports/svgen-0.2/`
 User prompt
    -> Rust CLI / API
    -> Tokenizer
-   -> Exported model inference
-   -> Generated SVG tokens
+   -> Exported model metadata
+   -> Fallback SVG until runtime inference lands
    -> Rust SVG validator / postprocess
    -> Final .svg output
 ```
@@ -39,7 +39,8 @@ tests/         Python tests
 Install Python dev dependencies:
 
 ```bash
-python3 -m pip install -r requirements-dev.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
 Install Rust:
@@ -52,7 +53,7 @@ rustup default stable
 Run checks:
 
 ```bash
-make check
+make check PYTHON=.venv/bin/python
 ```
 
 Generate the Lucide MVP dataset:
@@ -67,15 +68,21 @@ Train tokenizer, train tiny model, and export:
 
 ```bash
 python3 -m training.train_tokenizer --input data/train_1000.jsonl --out tokenizer/tokenizer.json --vocab-size 4096
-python3 -m training.train --config configs/train_mvp.yaml --data data/train_1000.jsonl --tokenizer tokenizer/tokenizer.json --out checkpoints/mvp
-python3 -m training.export --checkpoint checkpoints/mvp --out exports/svgen-0.2
+python3 -m training.train --config configs/train_mvp.yaml --data data/train_1000.jsonl --tokenizer tokenizer/tokenizer.json --out checkpoints/svgen-0.2.5
+python3 -m training.export --checkpoint checkpoints/svgen-0.2.5 --out exports/svgen-0.2.5
 ```
 
 Run Rust CLI:
 
 ```bash
 cd runtime
-cargo run -- generate --model ../exports/svgen-0.2 --prompt "minimal rocket icon" --out ../reports/rocket.svg
+cargo run -- generate --model ../exports/svgen-0.2.5 --prompt "minimal rocket icon" --out ../reports/rocket.svg
+```
+
+Until Rust inference is implemented, the CLI writes a valid fallback SVG and prints:
+
+```text
+Using fallback placeholder because no trained model is loaded.
 ```
 
 ## Safety Rules
@@ -84,7 +91,7 @@ The Rust validator rejects unsafe tags, unsafe attributes, namespace-prefixed XM
 
 ## MVP Scope
 
-SVGen 0.2 proves the pipeline, not production quality. The Rust runtime checks real artifacts and validates output, but generation is still deterministic placeholder output until Candle inference lands in SVGen 0.3.
+SVGen 0.2.5 proves the pipeline, not production quality. The Rust runtime inspects artifacts and validates output, but generation is still deterministic fallback output until an inference backend lands in a later release.
 
 ## Dataset Format
 

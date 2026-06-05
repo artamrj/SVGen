@@ -10,7 +10,9 @@ const MAX_CHILDREN: usize = 128;
 const MAX_PATH_D_LEN: usize = 2048;
 const MAX_NUMERIC_ABS: f64 = 10000.0;
 
-const ALLOWED_TAGS: &[&str] = &["svg", "path", "circle", "rect", "line", "polyline", "polygon", "g"];
+const ALLOWED_TAGS: &[&str] = &[
+    "svg", "path", "circle", "rect", "line", "polyline", "polygon", "g",
+];
 const ALLOWED_ATTRS: &[&str] = &[
     "viewBox",
     "d",
@@ -138,7 +140,11 @@ fn element_name(element: &BytesStart<'_>) -> Result<String> {
 
 fn validate_attribute_value(key: &str, value: &str) -> Result<()> {
     let lower = value.to_ascii_lowercase();
-    if lower.contains("javascript:") || lower.contains("data:") || lower.contains("http://") || lower.contains("https://") {
+    if lower.contains("javascript:")
+        || lower.contains("data:")
+        || lower.contains("http://")
+        || lower.contains("https://")
+    {
         bail!("unsafe external reference in attribute: {key}");
     }
     if key == "d" && value.len() > MAX_PATH_D_LEN {
@@ -152,7 +158,9 @@ fn validate_attribute_value(key: &str, value: &str) -> Result<()> {
 }
 
 fn validate_numeric_limits(value: &str) -> Result<()> {
-    for token in value.split(|character: char| !(character.is_ascii_digit() || character == '.' || character == '-')) {
+    for token in value.split(|character: char| {
+        !(character.is_ascii_digit() || character == '.' || character == '-')
+    }) {
         if token.is_empty() || token == "-" || token == "." {
             continue;
         }

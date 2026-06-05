@@ -37,7 +37,8 @@ fn main() -> anyhow::Result<()> {
             let svg = postprocess::normalize_svg(&raw_svg)?;
             validator::validate_svg(&svg)?;
             if let Some(parent) = out.parent() {
-                fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("creating {}", parent.display()))?;
             }
             fs::write(&out, svg).with_context(|| format!("writing {}", out.display()))?;
         }

@@ -11,7 +11,7 @@ from training.tokenizer import SvgTokenizer
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train the SVGen 0.2 tiny model.")
+    parser = argparse.ArgumentParser(description="Train the SVGen 0.2.5 tiny model.")
     parser.add_argument("--config", default="configs/train_mvp.yaml")
     parser.add_argument("--data")
     parser.add_argument("--tokenizer")
@@ -67,11 +67,11 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     torch.save({"model_state_dict": model.state_dict(), "config": model_config, "vocab_size": len(tokenizer.vocab)}, out_dir / "checkpoint.pt")
     (out_dir / "training_report.json").write_text(
-        json.dumps({"model": "SVGen 0.2", "records": len(records), "loss": avg_loss, "batches": len(losses)}, indent=2) + "\n",
+        json.dumps({"model": "SVGen 0.2.5 Tiny Generator", "records": len(records), "loss": avg_loss, "batches": len(losses)}, indent=2) + "\n",
         encoding="utf-8",
     )
 
-    print("SVGen 0.2 tiny training")
+    print("SVGen 0.2.5 tiny training")
     print(f"records={len(records)}")
     print(f"vocab_size={len(tokenizer.vocab)}")
     print(f"loss={avg_loss:.4f}")

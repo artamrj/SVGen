@@ -16,6 +16,6 @@
 
 ## Artifacts
 
-- Use lowercase paths: `exports/svgen-0.2/`.
+- Use lowercase paths: `exports/svgen-0.2.5/`.
 - Use display names in user-facing responses: `SVGen 0.1`.
-- For new user-facing SVGen 0.2 responses, use `SVGen 0.2`.
+- For new user-facing SVGen 0.2.5 responses, use `SVGen 0.2.5 Tiny Generator`.

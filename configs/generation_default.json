@@ -1,5 +1,5 @@
 {
-  "model": "SVGen 0.2",
+  "model": "SVGen 0.2.5 Tiny Generator",
   "max_new_tokens": 384,
   "temperature": 0.7,
   "top_p": 0.9,

@@ -1,7 +1,7 @@
 project:
   name: SVGen
-  version: "0.2"
-  artifact_dir: exports/svgen-0.2
+  version: "0.2.5"
+  artifact_dir: exports/svgen-0.2.5
 
 data:
   train_path: data/train_1000.jsonl
@@ -13,7 +13,7 @@ training:
   batch_size: 8
   epochs: 1
   learning_rate: 0.0003
-  checkpoint_dir: checkpoints/mvp
+  checkpoint_dir: checkpoints/svgen-0.2.5
 
 tokenizer:
   path: tokenizer/tokenizer.json
