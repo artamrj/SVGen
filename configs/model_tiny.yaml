@@ -1,6 +1,6 @@
 model:
   name: svgen-tiny
-  display_name: SVGen 0.2.5 Tiny Generator
+  display_name: SVGen 0.2.6 Easy Python Inference
   architecture: prompt_svg_causal_transformer
   hidden_size: 256
   num_layers: 4

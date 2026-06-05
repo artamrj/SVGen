@@ -1,6 +1,6 @@
 project:
   name: SVGen
-  version: "0.2.5"
+  version: "0.2.6"
   artifact_dir: exports/svgen-0.2.5
 
 data:

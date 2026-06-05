@@ -24,6 +24,6 @@ pub async fn generate_endpoint(
     axum::Json(GenerationResponse {
         svg: crate::generate::fallback_home_svg().to_string(),
         valid: true,
-        model: "SVGen 0.2.5 Tiny Generator".to_string(),
+        model: "SVGen 0.2.6 Easy Python Inference".to_string(),
     })
 }

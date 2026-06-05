@@ -1,8 +1,8 @@
 # SVGen
 
-SVGen is a text-to-SVG model project. SVGen 0.2.5 Tiny Generator is a truthful training/runtime milestone: validated Lucide-derived data, tokenizer artifacts, a tiny PyTorch training path, export artifacts, and a Rust-safe fallback output path.
+SVGen is a text-to-SVG model project. SVGen 0.2.6 Easy Python Inference adds the first user-friendly generation path on top of validated Lucide-derived data, tokenizer artifacts, tiny PyTorch training, export artifacts, and the Rust-safe fallback runtime.
 
-Display name: `SVGen 0.2.5 Tiny Generator`
+Display name: `SVGen 0.2.6 Easy Python Inference`
 
 Artifact path: `exports/svgen-0.2.5/`
 
@@ -10,11 +10,11 @@ Artifact path: `exports/svgen-0.2.5/`
 
 ```text
 User prompt
-   -> Rust CLI / API
+   -> Python generation CLI
    -> Tokenizer
-   -> Exported model metadata
-   -> Fallback SVG until runtime inference lands
-   -> Rust SVG validator / postprocess
+   -> Exported PyTorch model
+   -> Generated SVG tokens
+   -> Python SVG validator
    -> Final .svg output
 ```
 
@@ -36,6 +36,16 @@ tests/         Python tests
 
 ## Quickstart
 
+The easiest workflow is:
+
+```bash
+make setup
+make train
+make svg PROMPT="running dog icon" OUT=reports/dog.svg
+```
+
+Open `reports/dog.svg` in a browser or image viewer.
+
 Install Python dev dependencies:
 
 ```bash
@@ -53,7 +63,7 @@ rustup default stable
 Run checks:
 
 ```bash
-make check PYTHON=.venv/bin/python
+make check
 ```
 
 Generate the Lucide MVP dataset:
@@ -67,12 +77,25 @@ python3 -m training.validate_dataset --input data/train_1000.jsonl --report repo
 Train tokenizer, train tiny model, and export:
 
 ```bash
-python3 -m training.train_tokenizer --input data/train_1000.jsonl --out tokenizer/tokenizer.json --vocab-size 4096
-python3 -m training.train --config configs/train_mvp.yaml --data data/train_1000.jsonl --tokenizer tokenizer/tokenizer.json --out checkpoints/svgen-0.2.5
-python3 -m training.export --checkpoint checkpoints/svgen-0.2.5 --out exports/svgen-0.2.5
+make train
 ```
 
-Run Rust CLI:
+Generate with Python inference:
+
+```bash
+.venv/bin/python -m training.generate \
+  --model exports/svgen-0.2.5 \
+  --prompt "running dog icon" \
+  --out reports/dog.svg
+```
+
+Or use the Make shortcut:
+
+```bash
+make svg PROMPT="running dog icon" OUT=reports/dog.svg
+```
+
+The Rust CLI remains fallback-only until Rust inference lands:
 
 ```bash
 cd runtime
@@ -91,7 +114,7 @@ The Rust validator rejects unsafe tags, unsafe attributes, namespace-prefixed XM
 
 ## MVP Scope
 
-SVGen 0.2.5 proves the pipeline, not production quality. The Rust runtime inspects artifacts and validates output, but generation is still deterministic fallback output until an inference backend lands in a later release.
+SVGen 0.2.6 proves a real Python inference workflow, not production-quality icon generation. Output quality may be rough because the model is tiny, but generated SVG is validated before writing. The Rust runtime still emits deterministic fallback output until Rust inference lands in a later release.
 
 ## Dataset Format
 

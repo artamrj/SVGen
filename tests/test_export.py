@@ -25,9 +25,10 @@ def test_export_allows_explicit_placeholder(tmp_path: Path) -> None:
     )
 
     config = json.loads((out_dir / "config.json").read_text(encoding="utf-8"))
-    assert config["model"] == "SVGen 0.2.5 Tiny Generator"
+    assert config["model"] == "SVGen 0.2.6 Easy Python Inference"
     assert config["status"] == "placeholder"
     assert config["runtime_inference"] == "unavailable"
     assert (out_dir / "model.safetensors").exists()
     assert (out_dir / "tokenizer.json").exists()
-    assert (out_dir / "generation_config.json").exists()
+    generation_config = json.loads((out_dir / "generation_config.json").read_text(encoding="utf-8"))
+    assert generation_config["top_p"] == 0.9

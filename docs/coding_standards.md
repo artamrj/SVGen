@@ -17,5 +17,4 @@
 ## Artifacts
 
 - Use lowercase paths: `exports/svgen-0.2.5/`.
-- Use display names in user-facing responses: `SVGen 0.1`.
-- For new user-facing SVGen 0.2.5 responses, use `SVGen 0.2.5 Tiny Generator`.
+- For new user-facing responses, use `SVGen 0.2.6 Easy Python Inference`.

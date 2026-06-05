@@ -5,7 +5,7 @@ import json
 import shutil
 from pathlib import Path
 
-MODEL_NAME = "SVGen 0.2.5 Tiny Generator"
+MODEL_NAME = "SVGen 0.2.6 Easy Python Inference"
 
 
 def export_artifacts(
@@ -55,12 +55,15 @@ def export_artifacts(
         shutil.copyfile(tokenizer_src, out_dir / "tokenizer.json")
     else:
         (out_dir / "tokenizer.json").write_text(json.dumps({"status": "placeholder"}, indent=2) + "\n", encoding="utf-8")
-    (out_dir / "generation_config.json").write_text(json.dumps({"max_new_tokens": 384, "temperature": 0.7}, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "generation_config.json").write_text(
+        json.dumps({"max_new_tokens": 384, "temperature": 0.7, "top_p": 0.9}, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return out_dir
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Export SVGen 0.2.5 artifacts.")
+    parser = argparse.ArgumentParser(description="Export SVGen 0.2.6 artifacts.")
     parser.add_argument("--checkpoint", default="checkpoints/svgen-0.2.5")
     parser.add_argument("--out", default="exports/svgen-0.2.5")
     parser.add_argument("--tokenizer", default="tokenizer/tokenizer.json")

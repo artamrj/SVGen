@@ -1,5 +1,5 @@
 {
-  "model": "SVGen 0.2.5 Tiny Generator",
+  "model": "SVGen 0.2.6 Easy Python Inference",
   "max_new_tokens": 384,
   "temperature": 0.7,
   "top_p": 0.9,
