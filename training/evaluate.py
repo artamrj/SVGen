@@ -15,7 +15,7 @@ def main() -> None:
 
     config = load_config(args.config)
     report = {
-        "model": config.get("model", "SVGen 0.1"),
+        "model": config.get("model", "SVGen 0.2"),
         "valid_svg_rate": None,
         "render_success_rate": None,
         "status": "placeholder",

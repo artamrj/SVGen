@@ -20,6 +20,9 @@ pub fn normalize_svg(raw: &str) -> Result<String> {
 }
 
 fn is_wrappable_safe_element(raw: &str) -> bool {
+    if raw.contains(':') || raw.contains("<svg") || raw.contains("<?xml") {
+        return false;
+    }
     WRAPPABLE_TAGS
         .iter()
         .any(|tag| raw.starts_with(&format!("<{tag}")) && (raw.ends_with("/>") || raw.ends_with(&format!("</{tag}>"))))
@@ -38,5 +41,10 @@ mod tests {
     #[test]
     fn refuses_unsafe_bare_element() {
         assert!(normalize_svg(r#"<script>alert(1)</script>"#).is_err());
+    }
+
+    #[test]
+    fn refuses_namespace_prefixed_fragment() {
+        assert!(normalize_svg(r#"<x:path d="M0 0"/>"#).is_err());
     }
 }

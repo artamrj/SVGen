@@ -18,6 +18,20 @@ SVGen uses JSON Lines. Each line contains one text-to-SVG pair.
 - Remove scripts, external references, filters, masks, styles, embedded images, and unsupported tags.
 - Use simple geometry where possible: `path`, `circle`, `rect`, `line`, `polyline`, `polygon`, and `g`.
 
-## Splits
+## SVGen 0.2 Data
 
-Future datasets should be split into train, validation, and test JSONL files. The MVP scaffold uses `data/sample/dataset.jsonl` for all commands.
+`data/train_1000.jsonl` is generated from Lucide SVGs. Prompts are generated from filenames:
+
+```text
+shopping-cart.svg -> minimal outline shopping cart icon
+```
+
+Generate and validate it with:
+
+```bash
+npm pack lucide-static
+python3 -m training.build_lucide_dataset --tarball lucide-static-1.17.0.tgz --out data/train_1000.jsonl --limit 1000
+python3 -m training.validate_dataset --input data/train_1000.jsonl --report reports/dataset_report.json
+```
+
+Future datasets should be split into train, validation, and test JSONL files.

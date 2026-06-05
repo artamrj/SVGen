@@ -27,3 +27,7 @@ Generated SVG must be validated before use. The runtime blocks scripts, external
 ## SVG Restrictions
 
 Allowed tags for the MVP runtime are `svg`, `path`, `circle`, `rect`, `line`, `polyline`, `polygon`, and `g`.
+
+## Superseded By
+
+SVGen 0.2 adds validated Lucide-derived training data, tokenizer artifacts, a tiny trainable PyTorch model path, export artifacts, and stricter Rust validation.

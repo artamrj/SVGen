@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+import json
+from pathlib import Path
 
 
 TOKEN_PATTERN = re.compile(r"<[^>]+>|[A-Za-z_][A-Za-z0-9_-]*|[-+]?\d*\.?\d+|[^\s]")
@@ -39,19 +41,21 @@ class SvgTokenizer:
         filtered = [token for token in tokens if token not in {"<PAD>", "<BOS>", "<EOS>"}]
         return " ".join(filtered).replace("> <", "><")
 
+    def save(self, path: str | Path) -> None:
+        out_path = Path(path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "type": "svgen.simple_tokenizer",
+            "version": 1,
+            "vocab": self.vocab,
+            "special_tokens": ["<PAD>", "<UNK>", "<BOS>", "<EOS>"],
+        }
+        out_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-class HuggingFaceTokenizerAdapter:
-    """Thin import boundary for future Hugging Face tokenizers integration."""
-
-    def __init__(self, path: str) -> None:
-        try:
-            from tokenizers import Tokenizer
-        except ImportError as exc:
-            raise RuntimeError("Install svgen[tokenizers] to load Hugging Face tokenizer artifacts") from exc
-        self._tokenizer = Tokenizer.from_file(path)
-
-    def encode(self, text: str) -> list[int]:
-        return self._tokenizer.encode(text).ids
-
-    def decode(self, ids: list[int]) -> str:
-        return self._tokenizer.decode(ids)
+    @classmethod
+    def load(cls, path: str | Path) -> "SvgTokenizer":
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        vocab = payload.get("vocab")
+        if not isinstance(vocab, dict):
+            raise ValueError(f"Tokenizer artifact is missing vocab: {path}")
+        return cls(vocab={str(token): int(idx) for token, idx in vocab.items()})

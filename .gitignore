@@ -1,6 +1,7 @@
 .pytest_cache/
 __pycache__/
 *.pyc
+*.tgz
 .venv/
 target/
 checkpoints/*
@@ -9,5 +10,4 @@ exports/*
 !exports/.gitkeep
 reports/*
 !reports/.gitkeep
-tokenizer/*
-!tokenizer/.gitkeep
+.DS_Store

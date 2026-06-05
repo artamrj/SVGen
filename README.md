@@ -1,10 +1,10 @@
 # SVGen
 
-SVGen is a text-to-SVG model project. The MVP scaffold provides the project layout, dataset format, tokenizer wrapper, training/evaluation/export entrypoints, Rust runtime skeleton, SVG validation, and tests for the first development milestone.
+SVGen is a text-to-SVG model project. SVGen 0.2 moves the scaffold into a real training MVP: validated Lucide-derived data, tokenizer artifacts, a tiny PyTorch training path, export artifacts, and a Rust-safe output path.
 
-Display name: `SVGen 0.1`
+Display name: `SVGen 0.2`
 
-Artifact path: `exports/svgen-0.1/`
+Artifact path: `exports/svgen-0.2/`
 
 ## Architecture
 
@@ -21,54 +21,70 @@ User prompt
 ## Layout
 
 ```text
-svgen/
-  training/      Python/PyTorch training scaffold
-  runtime/       Rust CLI/API/runtime scaffold
-  configs/       Training, model, and generation configs
-  schemas/       JSON Schemas for public records and API payloads
-  data/          Sample and future training data
-  tokenizer/     Tokenizer artifacts
-  checkpoints/   Training checkpoints
-  exports/       Versioned exported model artifacts
-  docs/          Dataset, coding standards, and model card
-  reports/       Evaluation reports
-  tests/         Python tests
+training/      Python/PyTorch training, validation, tokenizer, export tools
+runtime/       Rust CLI/API/runtime scaffold
+configs/       Training, model, and generation configs
+schemas/       JSON Schemas for public records and API payloads
+data/          Sample data and train_1000.jsonl
+tokenizer/     Tokenizer artifacts
+checkpoints/   Training checkpoints
+exports/       Versioned exported model artifacts
+docs/          Dataset, coding standards, and model cards
+reports/       Evaluation and dataset reports
+tests/         Python tests
 ```
 
 ## Quickstart
 
-Run Python checks:
+Install Python dev dependencies:
 
 ```bash
-cd svgen
-python -m pytest
+python3 -m pip install -r requirements-dev.txt
 ```
 
-Load the MVP dataset:
+Install Rust:
 
 ```bash
-python -m training.dataset data/sample/dataset.jsonl
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup default stable
 ```
 
-Run placeholder training/evaluation/export:
+Run checks:
 
 ```bash
-python -m training.train --config configs/train_mvp.yaml
-python -m training.evaluate --config configs/generation_default.json
-python -m training.export --out exports/svgen-0.1
+make check
 ```
 
-Run Rust tests and the CLI:
+Generate the Lucide MVP dataset:
+
+```bash
+npm pack lucide-static
+python3 -m training.build_lucide_dataset --tarball lucide-static-1.17.0.tgz --out data/train_1000.jsonl --limit 1000
+python3 -m training.validate_dataset --input data/train_1000.jsonl --report reports/dataset_report.json
+```
+
+Train tokenizer, train tiny model, and export:
+
+```bash
+python3 -m training.train_tokenizer --input data/train_1000.jsonl --out tokenizer/tokenizer.json --vocab-size 4096
+python3 -m training.train --config configs/train_mvp.yaml --data data/train_1000.jsonl --tokenizer tokenizer/tokenizer.json --out checkpoints/mvp
+python3 -m training.export --checkpoint checkpoints/mvp --out exports/svgen-0.2
+```
+
+Run Rust CLI:
 
 ```bash
 cd runtime
-cargo test
-cargo run -- generate --model ../exports/svgen-0.1 --prompt "minimal rocket icon" --out ../reports/rocket.svg
+cargo run -- generate --model ../exports/svgen-0.2 --prompt "minimal rocket icon" --out ../reports/rocket.svg
 ```
+
+## Safety Rules
+
+The Rust validator rejects unsafe tags, unsafe attributes, namespace-prefixed XML tricks, external references, oversized SVGs, excessive depth, excessive child counts, long path data, and very large numeric values.
 
 ## MVP Scope
 
-This repository is a scaffold. It does not include trained production weights. The Rust runtime emits deterministic placeholder SVGs until real `safetensors` model loading and generation are implemented.
+SVGen 0.2 proves the pipeline, not production quality. The Rust runtime checks real artifacts and validates output, but generation is still deterministic placeholder output until Candle inference lands in SVGen 0.3.
 
 ## Dataset Format
 
