@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://svgen.local/schemas/generation_response.schema.json",
+  "title": "SVGen Generation Response",
+  "type": "object",
+  "required": ["svg", "valid", "model"],
+  "additionalProperties": false,
+  "properties": {
+    "svg": {
+      "type": "string"
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "model": {
+      "type": "string"
+    }
+  }
+}

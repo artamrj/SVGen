@@ -1,0 +1,19 @@
+[project]
+name = "svgen"
+version = "0.1.0"
+description = "MVP scaffold for the SVGen text-to-SVG model project"
+requires-python = ">=3.10"
+dependencies = [
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+tokenizers = [
+  "tokenizers>=0.15",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

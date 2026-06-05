@@ -1,0 +1,20 @@
+project:
+  name: SVGen
+  version: "0.1"
+  artifact_dir: exports/svgen-0.1
+
+data:
+  train_path: data/sample/dataset.jsonl
+  validation_path: data/sample/dataset.jsonl
+  max_sequence_length: 512
+
+training:
+  seed: 42
+  batch_size: 4
+  epochs: 1
+  learning_rate: 0.0003
+  checkpoint_dir: checkpoints/mvp
+
+tokenizer:
+  path: tokenizer/tokenizer.json
+  vocab_size: 4096

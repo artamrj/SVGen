@@ -1,0 +1,13 @@
+.pytest_cache/
+__pycache__/
+*.pyc
+.venv/
+target/
+checkpoints/*
+!checkpoints/.gitkeep
+exports/*
+!exports/.gitkeep
+reports/*
+!reports/.gitkeep
+tokenizer/*
+!tokenizer/.gitkeep
