@@ -1,3 +1,8 @@
-torch>=2.3
-safetensors>=0.4
+# SVGen 0.3 Mono: training + generation on Apple Silicon
+mlx-lm>=0.32
+pillow>=11
 numpy>=1.26
+safetensors>=0.4
+# CLIP reranking (optional but recommended) and the legacy 0.2 PyTorch model
+torch>=2.3
+open_clip_torch>=3.0

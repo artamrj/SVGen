@@ -1,17 +1,29 @@
 [project]
 name = "svgen"
-version = "0.2.6"
-description = "Easy Python inference milestone for the SVGen text-to-SVG model project"
+version = "0.3.0"
+description = "Text-to-SVG icon generator: a LoRA fine-tuned code LLM that draws black-and-white line icons"
 requires-python = ">=3.10"
 dependencies = [
+  "mlx-lm>=0.32",
+  "pillow>=11",
+  "numpy>=1.26",
   "safetensors>=0.4",
-  "torch>=2.3",
 ]
 
 [project.optional-dependencies]
+rerank = [
+  "torch>=2.3",
+  "open_clip_torch>=3.0",
+]
 dev = [
   "pytest>=8.0",
 ]
+
+[project.scripts]
+svgen = "svgen.generate:main"
+
+[tool.setuptools]
+packages = ["svgen", "training"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

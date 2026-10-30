@@ -11,3 +11,5 @@ exports/*
 reports/*
 !reports/.gitkeep
 .DS_Store
+data/raw/
+data/processed/

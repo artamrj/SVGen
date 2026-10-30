@@ -1,0 +1,28 @@
+# SVGen 0.3 Mono: LoRA fine-tune of Qwen2.5-Coder-0.5B on black-and-white line icons.
+# Run with: make train   (uses mlx_lm on Apple Silicon)
+model: "mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16"
+train: true
+data: "data/processed"
+fine_tune_type: lora
+optimizer: adamw
+mask_prompt: true          # learn only the SVG answer, not the prompt
+num_layers: -1             # adapt every transformer block
+batch_size: 8
+iters: 2000                # ~1 epoch: every icon seen twice, with different prompts
+val_batches: -1
+steps_per_report: 25
+steps_per_eval: 250
+save_every: 250
+adapter_path: "checkpoints/svgen-0.3-mono"
+max_seq_length: 768
+grad_checkpoint: true      # lower memory: the laptop stays usable
+learning_rate: 2.0e-4
+seed: 7
+lr_schedule:
+  name: cosine_decay
+  warmup: 100
+  arguments: [2.0e-4, 2000, 1.0e-5]
+lora_parameters:
+  rank: 32
+  scale: 2.0
+  dropout: 0.05

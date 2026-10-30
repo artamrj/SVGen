@@ -1,0 +1,29 @@
+# SVGen 0.3 Mono, stage 2: continue from the stage-1 adapter (configs/lora_mono.yaml).
+# Run with: make train-stage2
+model: "mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16"
+train: true
+data: "data/processed"
+fine_tune_type: lora
+optimizer: adamw
+mask_prompt: true          # learn only the SVG answer, not the prompt
+num_layers: -1             # adapt every transformer block
+batch_size: 8
+iters: 3000                # stage 2: ~1.4 more epochs (total ~2.4)
+val_batches: -1
+steps_per_report: 25
+steps_per_eval: 250
+save_every: 250
+adapter_path: "checkpoints/svgen-0.3-mono-stage2"
+resume_adapter_file: "checkpoints/svgen-0.3-mono/adapters.safetensors"
+max_seq_length: 768
+grad_checkpoint: true      # lower memory: the laptop stays usable
+learning_rate: 1.5e-4
+seed: 8
+lr_schedule:
+  name: cosine_decay
+  warmup: 50
+  arguments: [1.5e-4, 3000, 5.0e-6]
+lora_parameters:
+  rank: 32
+  scale: 2.0
+  dropout: 0.05
