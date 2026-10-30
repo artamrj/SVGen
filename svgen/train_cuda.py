@@ -25,8 +25,10 @@ LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", 
 def pick_device() -> tuple[str, torch.dtype, bool]:
     """Return (device, compute dtype, use grad scaler)."""
     if torch.cuda.is_available():
-        if torch.cuda.is_bf16_supported():
-            return "cuda", torch.bfloat16, False  # A100, L4, H100
+        # Native bf16 needs compute capability 8.0+ (A100, L4, H100). Recent PyTorch reports
+        # bf16 as "supported" on a T4 too, but only through slow emulation.
+        if torch.cuda.get_device_capability()[0] >= 8:
+            return "cuda", torch.bfloat16, False
         return "cuda", torch.float16, True  # T4, V100
     if torch.backends.mps.is_available():
         return "mps", torch.float32, False  # local smoke tests only
