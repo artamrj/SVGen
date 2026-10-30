@@ -4,9 +4,8 @@ OUT ?= reports/output.svg
 N ?= 4
 ADAPTER ?= models/svgen-0.3-mono
 BASE ?= mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16
-ICON_PACKS = lucide-static @tabler/icons iconoir heroicons
 
-.PHONY: train-stage1 train-stage2 train-stage3 setup test test-python test-rust check cleanup data-download data train release eval svg fuse \
+.PHONY: convert train-stage1 train-stage2 train-stage3 setup test test-python test-rust check cleanup data-download data train release eval svg fuse \
 	legacy-validate-dataset legacy-train-tokenizer legacy-train-model legacy-train legacy-export legacy-svg
 
 # ---- SVGen 0.3 Mono (MLX, Apple Silicon) -------------------------------------
@@ -17,12 +16,7 @@ setup:
 
 ## Download the open-source icon packs used for training (~10 MB).
 data-download:
-	mkdir -p data/raw/npm data/raw/extracted
-	cd data/raw/npm && npm pack $(ICON_PACKS) --silent
-	for f in data/raw/npm/*.tgz; do \
-		name=$$(basename $$f .tgz); mkdir -p data/raw/extracted/$$name; \
-		tar xzf $$f -C data/raw/extracted/$$name; \
-	done
+	$(PYTHON) -m svgen.download --out data/raw/extracted
 
 ## Clean every icon into the canonical format and write train/valid/test splits.
 data:
@@ -51,11 +45,19 @@ release:
 	$(PYTHON) -m svgen.release --checkpoint checkpoints/svgen-0.3-mono-stage3 --out $(ADAPTER)
 
 eval:
-	$(PYTHON) -m svgen.evaluate --adapter $(ADAPTER) --limit 64 -n $(N)
+	$(PYTHON) -m svgen.evaluate --base $(BASE) --adapter $(ADAPTER) --limit 64 -n $(N)
 
 svg:
 	@test -n "$(PROMPT)" || (echo 'PROMPT is required, for example: make svg PROMPT="rocket" OUT=reports/rocket.svg' >&2; exit 2)
-	$(PYTHON) -m svgen.generate "$(PROMPT)" --adapter $(ADAPTER) -n $(N) --out "$(OUT)"
+	$(PYTHON) -m svgen.generate "$(PROMPT)" --base $(BASE) --adapter $(ADAPTER) -n $(N) --out "$(OUT)"
+
+## Turn a model trained on Colab (runs/<name>/merged) into a fast 8-bit MLX model:
+##   make convert MERGED=~/Downloads/merged NAME=svgen-1.5b
+##   make svg PROMPT="star" BASE=models/svgen-1.5b ADAPTER=none
+MERGED ?= runs/svgen-1.5b/merged
+NAME ?= svgen-1.5b
+convert:
+	$(PYTHON) -m mlx_lm convert --hf-path $(MERGED) --mlx-path models/$(NAME) -q --q-bits 8
 
 ## Merge the adapter into a standalone MLX model in exports/.
 fuse:

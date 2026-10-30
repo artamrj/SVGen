@@ -94,7 +94,11 @@ from svgen.generate import text_to_svg
 svg = text_to_svg("cloud", n=4)
 ```
 
-Train from scratch: `make data-download data train release eval`.
+Train from scratch on a Mac: `make data-download data train release eval`.
+
+Train the larger 1.5B model on a free Colab GPU:
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/artamrj/SVGen/blob/main/notebooks/train_colab.ipynb)
 
 ## Project structure
 

@@ -34,7 +34,9 @@ class Candidate:
 def load_model(base: str = DEFAULT_BASE, adapter: str | None = DEFAULT_ADAPTER):
     from mlx_lm import load
 
-    adapter_path = adapter if adapter and Path(adapter).exists() else None
+    # adapter="none" (or a missing folder) means `base` is already a fine-tuned, merged model,
+    # e.g. one trained on Colab with svgen.train_cuda and converted with `make convert`.
+    adapter_path = adapter if adapter and adapter.lower() != "none" and Path(adapter).exists() else None
     return load(base, adapter_path=adapter_path)
 
 
@@ -102,8 +104,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stroke-width", type=float, default=2.0)
     parser.add_argument("--no-clip", action="store_true", help="skip CLIP reranking")
     parser.add_argument("--seed", type=int)
-    parser.add_argument("--base", default=DEFAULT_BASE)
-    parser.add_argument("--adapter", default=DEFAULT_ADAPTER)
+    parser.add_argument("--base", default=DEFAULT_BASE, help="base model, or a merged model folder")
+    parser.add_argument("--adapter", default=DEFAULT_ADAPTER, help='LoRA adapter folder, or "none" for a merged model')
     args = parser.parse_args(argv)
 
     svg = text_to_svg(

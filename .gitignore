@@ -13,3 +13,5 @@ reports/*
 .DS_Store
 data/raw/
 data/processed/
+runs/
+models/svgen-1.5b*/
