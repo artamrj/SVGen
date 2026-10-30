@@ -54,6 +54,8 @@ SigLIP2 ViT-B/16 was chosen as the judge because it matched held-out icons to th
 
 ![samples](samples_0.3.png)
 
+Curated good outputs: [showcase.png](showcase.png) · example files in [examples/](examples/)
+
 ## What works and what does not
 
 * **Works:** valid, clean, consistent line-icon style. Common UI concepts made of simple geometry (camera, heart, lock, calendar, chat bubble, shopping cart, battery, music note, crossed-out variants).
