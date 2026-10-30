@@ -2,6 +2,10 @@
 name = "svgen"
 version = "0.3.0"
 description = "Text-to-SVG icon generator: a LoRA fine-tuned code LLM that draws black-and-white line icons"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Arta" }]
+keywords = ["svg", "text-to-svg", "icons", "mlx", "lora", "llm", "vector-graphics"]
 requires-python = ">=3.10"
 dependencies = [
   "mlx-lm>=0.32",
@@ -9,6 +13,9 @@ dependencies = [
   "numpy>=1.26",
   "safetensors>=0.4",
 ]
+
+[project.urls]
+Repository = "https://github.com/artamrj/SVGen"
 
 [project.optional-dependencies]
 rerank = [

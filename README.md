@@ -4,6 +4,11 @@
 
 **Text in, clean SVG icon out.**
 
+[![tests](https://github.com/artamrj/SVGen/actions/workflows/tests.yml/badge.svg)](https://github.com/artamrj/SVGen/actions/workflows/tests.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Apple Silicon](https://img.shields.io/badge/runs%20on-Apple%20Silicon-black.svg)
+
 A small language model fine-tuned to draw black-and-white line icons as real, editable SVG code. Trained and run on a MacBook.
 
 ![SVGen samples](docs/showcase.png)
@@ -124,6 +129,10 @@ flowchart LR
 - [ ] Reinforcement learning from rendered output (GRPO + SigLIP2 reward)
 - [ ] Filled icons, then color
 - [ ] Rust runtime inference (the safety validator already exists in `runtime/`)
+
+## License
+
+Code: [MIT](LICENSE). The model adapter builds on Qwen2.5-Coder (Apache-2.0), and training icons keep their own licenses (below).
 
 ## Credits
 
