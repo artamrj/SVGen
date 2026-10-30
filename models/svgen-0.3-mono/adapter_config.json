@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "clear_cache_threshold": 0,
+  "config": "configs/lora_mono_stage3.yaml",
+  "fine_tune_type": "lora",
+  "grad_accumulation_steps": 1,
+  "grad_checkpoint": true,
+  "iters": 1200,
+  "learning_rate": 8e-05,
+  "lora_parameters": {
+    "rank": 32,
+    "scale": 2.0,
+    "dropout": 0.05
+  },
+  "lr_schedule": {
+    "name": "cosine_decay",
+    "warmup": 50,
+    "arguments": [
+      8e-05,
+      1200,
+      5e-06
+    ]
+  },
+  "mask_prompt": true,
+  "max_seq_length": 768,
+  "model": "mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16",
+  "num_layers": -1,
+  "optimizer": "adamw",
+  "optimizer_config": {
+    "adam": {},
+    "adamw": {},
+    "muon": {},
+    "sgd": {},
+    "adafactor": {}
+  },
+  "save_every": 300,
+  "seed": 9,
+  "steps_per_eval": 300,
+  "steps_per_report": 25,
+  "test": false,
+  "test_batches": 500,
+  "train": true,
+  "trust_remote_code": false,
+  "val_batches": -1
+}

@@ -1,6 +1,6 @@
 """Package a trained LoRA checkpoint as a small, committed model folder.
 
-    python -m svgen.release --checkpoint checkpoints/svgen-0.3-mono-stage2 --out models/svgen-0.3-mono
+    python -m svgen.release --checkpoint checkpoints/svgen-0.3-mono-stage3 --out models/svgen-0.3-mono
 
 The adapter weights are stored in float16 (half the size, no visible quality
 loss for LoRA deltas). Pass --step 1500 to release an intermediate checkpoint.
@@ -30,7 +30,7 @@ def release(checkpoint: Path, out: Path, step: int | None = None) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--checkpoint", type=Path, default=Path("checkpoints/svgen-0.3-mono-stage2"))
+    parser.add_argument("--checkpoint", type=Path, default=Path("checkpoints/svgen-0.3-mono-stage3"))
     parser.add_argument("--out", type=Path, default=Path("models/svgen-0.3-mono"))
     parser.add_argument("--step", type=int)
     args = parser.parse_args()

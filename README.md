@@ -1,127 +1,84 @@
 # SVGen
 
-SVGen is a text-to-SVG model project. SVGen 0.2.6 Easy Python Inference adds the first user-friendly generation path on top of validated Lucide-derived data, tokenizer artifacts, tiny PyTorch training, export artifacts, and the Rust-safe fallback runtime.
+Text in, clean black-and-white SVG icon out.
 
-Display name: `SVGen 0.2.6 Easy Python Inference`
+```bash
+make svg PROMPT="camera" OUT=reports/camera.svg
+```
 
-Artifact path: `exports/svgen-0.2.5/`
+SVGen 0.3 Mono is a small language model fine-tuned to draw 24×24 line icons as SVG code. It runs locally on an Apple Silicon Mac. The model lives in this repository: a 35 MB LoRA adapter on top of `Qwen2.5-Coder-0.5B-Instruct`.
 
-## Architecture
+![Sample outputs](docs/samples_0.3.png)
+
+## How it works
 
 ```text
-User prompt
-   -> Python generation CLI
-   -> Tokenizer
-   -> Exported PyTorch model
-   -> Generated SVG tokens
-   -> Python SVG validator
-   -> Final .svg output
+prompt ──► Qwen2.5-Coder-0.5B + SVGen LoRA (MLX)
+              │  samples N candidates in one batch
+              ▼
+         strict SVG parser ──► drop invalid output, keep complete shapes
+              ▼
+         render (librsvg) ──► SigLIP2 picks the candidate that best matches the prompt
+              ▼
+         safe <svg> wrapper ──► file
 ```
+
+* **The model writes only shapes**: `path`, `circle`, `rect`, `line` and `ellipse`, in absolute coordinates rounded to 0.1. SVGen adds the `<svg>` wrapper itself (24×24 canvas, `stroke="currentColor"`, round caps). The output is always well-formed, safe, and themable with CSS `color`.
+* **Best-of-N + reranking**: sampling 4 candidates and keeping the one whose rendering best matches the text (SigLIP2) is a cheap, large quality boost. Pass `--no-clip` to skip it.
+* **Safety**: anything outside the allowed shapes and attributes is rejected: no scripts, no external references, no coordinates off the canvas.
+
+## Quickstart (Apple Silicon)
+
+```bash
+make setup                                   # venv + dependencies
+brew install librsvg                         # rendering, used for reranking
+make svg PROMPT="lock" OUT=reports/lock.svg
+```
+
+From Python:
+
+```python
+from svgen.generate import text_to_svg
+svg = text_to_svg("cloud with rain", n=4)
+```
+
+Command-line options: `python -m svgen.generate --help` (`-n` candidates, `--temperature`, `--stroke-width`, `--seed`, `--no-clip`).
+
+## Train it yourself
+
+```bash
+make data-download   # Lucide, Tabler, Iconoir, Heroicons from npm (~10 MB)
+make data            # clean ~8.9k icons into data/processed/{train,valid,test}.jsonl
+make train           # 3-stage LoRA fine-tune with mlx_lm, runs at low priority
+make release         # half-precision adapter into models/svgen-0.3-mono
+make eval            # held-out concepts + free prompts -> reports/eval.json, eval_sheet.png
+```
+
+Training takes about 4–5 hours on an M1 Pro (16 GB) while the laptop stays usable. Run only one GPU job at a time: macOS kills GPU work that hurts screen responsiveness.
 
 ## Layout
 
 ```text
-training/      Python/PyTorch training, validation, tokenizer, export tools
-runtime/       Rust CLI/API/runtime scaffold
-configs/       Training, model, and generation configs
-schemas/       JSON Schemas for public records and API payloads
-data/          Sample data and train_1000.jsonl
-tokenizer/     Tokenizer artifacts
-checkpoints/   Training checkpoints
-exports/       Versioned exported model artifacts
-docs/          Dataset, coding standards, and model cards
-reports/       Evaluation and dataset reports
-tests/         Python tests
+svgen/        0.3 pipeline: svg format, dataset, generation, reranking, evaluation, release
+configs/      lora_mono*.yaml training stages
+models/       released LoRA adapter (committed)
+tests/        pytest suite
+docs/         model cards and dataset notes
+runtime/      Rust CLI with the SVG safety validator (inference not ported yet)
+training/     legacy 0.2 tiny PyTorch model (make legacy-*)
 ```
 
-## Quickstart
+## Status and limits
 
-The easiest workflow is:
+See [docs/model_card_svgen_0.3.md](docs/model_card_svgen_0.3.md) for numbers. In short:
 
-```bash
-make setup
-make train
-make svg PROMPT="running dog icon" OUT=reports/dog.svg
-```
+* Style and validity are solid: almost every sample is a valid, clean line icon.
+* Concepts the icon packs cover well (lock, camera, heart, arrows, devices, UI symbols) come out recognizable. Unusual or compositional prompts ("cat riding a bicycle") often don't.
+* Black and white line icons only, by design. Filled icons and color come next.
 
-Open `reports/dog.svg` in a browser or image viewer.
+## Roadmap
 
-Install Python dev dependencies:
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
-```
-
-Install Rust:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup default stable
-```
-
-Run checks:
-
-```bash
-make check
-```
-
-Generate the Lucide MVP dataset:
-
-```bash
-npm pack lucide-static
-python3 -m training.build_lucide_dataset --tarball lucide-static-1.17.0.tgz --out data/train_1000.jsonl --limit 1000
-python3 -m training.validate_dataset --input data/train_1000.jsonl --report reports/dataset_report.json
-```
-
-Train tokenizer, train tiny model, and export:
-
-```bash
-make train
-```
-
-Generate with Python inference:
-
-```bash
-.venv/bin/python -m training.generate \
-  --model exports/svgen-0.2.5 \
-  --prompt "running dog icon" \
-  --out reports/dog.svg
-```
-
-Or use the Make shortcut:
-
-```bash
-make svg PROMPT="running dog icon" OUT=reports/dog.svg
-```
-
-The Rust CLI remains fallback-only until Rust inference lands:
-
-```bash
-cd runtime
-cargo run -- generate --model ../exports/svgen-0.2.5 --prompt "minimal rocket icon" --out ../reports/rocket.svg
-```
-
-Until Rust inference is implemented, the CLI writes a valid fallback SVG and prints:
-
-```text
-Using fallback placeholder because no trained model is loaded.
-```
-
-## Safety Rules
-
-The Rust validator rejects unsafe tags, unsafe attributes, namespace-prefixed XML tricks, external references, oversized SVGs, excessive depth, excessive child counts, long path data, and very large numeric values.
-
-## MVP Scope
-
-SVGen 0.2.6 proves a real Python inference workflow, not production-quality icon generation. Output quality may be rough because the model is tiny, but generated SVG is validated before writing. The Rust runtime still emits deterministic fallback output until Rust inference lands in a later release.
-
-## Dataset Format
-
-Each line is a JSON object:
-
-```json
-{"text":"minimal black home icon","svg":"<svg viewBox=\"0 0 24 24\"><path d=\"M3 12 L12 3 L21 12 V21 H3 Z\"/></svg>"}
-```
-
-See `docs/dataset_format.md` for details.
+1. Bigger base (Qwen2.5-Coder-1.5B, already supported by the config) on a GPU machine.
+2. Richer captions: describe each rendered icon with a vision model instead of using names and tags.
+3. RL from rendering feedback (GRPO with a SigLIP reward), the step behind recent SVG models such as RLRF and Reason-SVG.
+4. Filled icons, then color.

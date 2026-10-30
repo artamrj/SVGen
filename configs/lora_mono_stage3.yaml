@@ -1,0 +1,29 @@
+# SVGen 0.3 Mono, stage 3: short pass on the rebalanced data (base icons weighted up).
+# Run with: make train-stage3   (after `make data`, which rebalances by default)
+model: "mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16"
+train: true
+data: "data/processed"
+fine_tune_type: lora
+optimizer: adamw
+mask_prompt: true          # learn only the SVG answer, not the prompt
+num_layers: -1             # adapt every transformer block
+batch_size: 8
+iters: 1200                # ~0.4 epoch of the rebalanced data
+val_batches: -1
+steps_per_report: 25
+steps_per_eval: 300
+save_every: 300
+adapter_path: "checkpoints/svgen-0.3-mono-stage3"
+resume_adapter_file: "checkpoints/svgen-0.3-mono-stage2/adapters.safetensors"
+max_seq_length: 768
+grad_checkpoint: true      # lower memory: the laptop stays usable
+learning_rate: 8.0e-5
+seed: 9
+lr_schedule:
+  name: cosine_decay
+  warmup: 50
+  arguments: [8.0e-5, 1200, 5.0e-6]
+lora_parameters:
+  rank: 32
+  scale: 2.0
+  dropout: 0.05

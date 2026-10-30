@@ -83,3 +83,11 @@ def test_describe_name_and_prompts():
     icon = Icon("tabler", "heart", "<path/>", tags=["love", "like"])
     prompts = make_prompts(icon, random.Random(0), 2)
     assert len(prompts) == 2 and all("heart" in p for p in prompts)
+
+
+def test_variant_names_detects_icon_families():
+    from svgen.data import variant_names
+
+    icons = [Icon("tabler", n, "<path/>") for n in ("heart", "heart-bolt", "heart-rate-monitor", "bolt")]
+    icons.append(Icon("lucide", "heart-bolt", "<path/>"))
+    assert variant_names(icons) == {("tabler", "heart-bolt"), ("tabler", "heart-rate-monitor")}

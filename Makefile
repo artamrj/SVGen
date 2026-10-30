@@ -6,7 +6,7 @@ ADAPTER ?= models/svgen-0.3-mono
 BASE ?= mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16
 ICON_PACKS = lucide-static @tabler/icons iconoir heroicons
 
-.PHONY: train-stage1 train-stage2 setup test test-python test-rust check cleanup data-download data train release eval svg fuse \
+.PHONY: train-stage1 train-stage2 train-stage3 setup test test-python test-rust check cleanup data-download data train release eval svg fuse \
 	legacy-validate-dataset legacy-train-tokenizer legacy-train-model legacy-train legacy-export legacy-svg
 
 # ---- SVGen 0.3 Mono (MLX, Apple Silicon) -------------------------------------
@@ -29,8 +29,13 @@ data:
 	$(PYTHON) -m svgen.data --raw data/raw/extracted --out data/processed
 
 ## LoRA fine-tune on the GPU at low CPU priority, so the laptop stays usable.
-## Stage 1 = 2000 steps, stage 2 continues for 3000 more (~2.4 epochs total).
-train: train-stage1 train-stage2
+## Stages 1-2 (5000 steps) use the plain dataset (`--root-bonus 0`); stage 3 (1200 steps)
+## uses the rebalanced default dataset so plain prompts draw the base icon, not a variant.
+train:
+	$(PYTHON) -m svgen.data --root-bonus 0
+	$(MAKE) train-stage1 train-stage2
+	$(PYTHON) -m svgen.data
+	$(MAKE) train-stage3
 
 train-stage1:
 	nice -n 10 $(PYTHON) -m mlx_lm lora -c configs/lora_mono.yaml
@@ -38,9 +43,12 @@ train-stage1:
 train-stage2:
 	nice -n 10 $(PYTHON) -m mlx_lm lora -c configs/lora_mono_stage2.yaml
 
+train-stage3:
+	nice -n 10 $(PYTHON) -m mlx_lm lora -c configs/lora_mono_stage3.yaml
+
 ## Copy the trained adapter into models/ in half precision (what gets committed).
 release:
-	$(PYTHON) -m svgen.release --checkpoint checkpoints/svgen-0.3-mono-stage2 --out $(ADAPTER)
+	$(PYTHON) -m svgen.release --checkpoint checkpoints/svgen-0.3-mono-stage3 --out $(ADAPTER)
 
 eval:
 	$(PYTHON) -m svgen.evaluate --adapter $(ADAPTER) --limit 64 -n $(N)

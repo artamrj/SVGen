@@ -144,7 +144,23 @@ def split_groups(icons: list[Icon], rng: random.Random, n_valid: int, n_test: in
     return split
 
 
-def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars: int, n_valid: int, n_test: int) -> dict:
+def variant_names(icons: list[Icon]) -> set[tuple[str, str]]:
+    """Icons that extend another icon of the same pack, e.g. tabler 'heart-bolt' extends 'heart'.
+
+    Tabler alone has dozens of variants per concept. Without rebalancing, the
+    plain prompt "heart" mostly teaches the model to draw some heart variant.
+    """
+    names = {(icon.source, icon.name) for icon in icons}
+    variants: set[tuple[str, str]] = set()
+    for icon in icons:
+        parts = icon.name.split("-")
+        if any((icon.source, "-".join(parts[:k])) in names for k in range(1, len(parts))):
+            variants.add((icon.source, icon.name))
+    return variants
+
+
+def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars: int, n_valid: int, n_test: int,
+          root_bonus: int = 3) -> dict:
     rng = random.Random(seed)
     icons, rejected = load_icons(raw)
     seen: set[str] = set()
@@ -161,13 +177,17 @@ def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars
         unique.append(icon)
 
     split = split_groups(unique, rng, n_valid, n_test)
+    variants = variant_names(unique)
     out.mkdir(parents=True, exist_ok=True)
     counts: dict[str, int] = {}
     for name, items in split.items():
         rng.shuffle(items)
         rows = []
         for icon in items:
-            n = prompts_per_icon if name == "train" else 1
+            n = 1
+            if name == "train":
+                is_variant = (icon.source, icon.name) in variants
+                n = 1 if is_variant and root_bonus else prompts_per_icon + (0 if is_variant else root_bonus)
             for prompt in make_prompts(icon, rng, n):
                 rows.append(chat_record(prompt, icon.body))
         with (out / f"{name}.jsonl").open("w", encoding="utf-8") as handle:
@@ -185,6 +205,7 @@ def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars
         "dropped_too_long": too_long,
         "rejected": dict(rejected),
         "by_source": dict(Counter(icon.source for icon in unique)),
+        "variant_icons": len(variants),
         "rows": counts,
         "avg_body_chars": round(sum(len(i.body) for i in unique) / max(1, len(unique)), 1),
     }
@@ -199,10 +220,12 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--prompts-per-icon", type=int, default=2)
     parser.add_argument("--max-body-chars", type=int, default=1400)
+    parser.add_argument("--root-bonus", type=int, default=3,
+                        help="extra prompts for base icons; variants get 1. 0 = no rebalancing (stages 1-2)")
     parser.add_argument("--valid", type=int, default=120)
     parser.add_argument("--test", type=int, default=150)
     args = parser.parse_args()
-    report = build(args.raw, args.out, args.seed, args.prompts_per_icon, args.max_body_chars, args.valid, args.test)
+    report = build(args.raw, args.out, args.seed, args.prompts_per_icon, args.max_body_chars, args.valid, args.test, args.root_bonus)
     print(json.dumps(report, indent=2))
 
 
