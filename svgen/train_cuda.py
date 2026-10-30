@@ -4,8 +4,10 @@
 
 Same data and chat format as the MLX recipe (data/processed/*.jsonl). Built for
 flaky machines: it saves a checkpoint every --save-every steps and resumes from
-the latest one when you run the same command again. When training finishes it
-writes a merged full model to <out>/merged, which MLX on a Mac loads directly.
+the latest one when you run the same command again. It keeps the adapter with the
+lowest validation loss in <out>/best and stops early once validation stops improving
+(the model starts memorizing). At the end it merges the best adapter into a full
+model in <out>/merged, which MLX on a Mac loads directly.
 """
 
 from __future__ import annotations
@@ -95,16 +97,27 @@ def evaluate(model, rows, batch_size, pad_id, device, dtype) -> float:
     return total_loss / max(1, total_tokens)
 
 
-def save_checkpoint(model, optimizer, scaler, step: int, out: Path) -> None:
-    ckpt = out / "checkpoint"
-    tmp = out / "checkpoint.tmp"
-    model.save_pretrained(tmp)
-    torch.save({"optimizer": optimizer.state_dict(), "scaler": scaler.state_dict() if scaler else None, "step": step}, tmp / "state.pt")
-    if ckpt.exists():
-        import shutil
+def _atomic_save(model, target: Path, extra=None) -> None:
+    """Write to a temp folder, then swap it in: a disconnect never leaves a broken save."""
+    import shutil
 
-        shutil.rmtree(ckpt)
-    tmp.rename(ckpt)  # atomic: a disconnect mid-save never leaves a broken checkpoint
+    tmp = target.with_name(target.name + ".tmp")
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    model.save_pretrained(tmp)
+    for name, payload in (extra or {}).items():
+        if name.endswith(".pt"):
+            torch.save(payload, tmp / name)
+        else:
+            (tmp / name).write_text(json.dumps(payload) + "\n", encoding="utf-8")
+    if target.exists():
+        shutil.rmtree(target)
+    tmp.rename(target)
+
+
+def save_checkpoint(model, optimizer, scaler, step: int, best: dict, out: Path) -> None:
+    state = {"optimizer": optimizer.state_dict(), "scaler": scaler.state_dict() if scaler else None, "step": step, "best": best}
+    _atomic_save(model, out / "checkpoint", {"state.pt": state})
 
 
 def main() -> None:
@@ -126,7 +139,10 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=400)
     parser.add_argument("--max-steps", type=int, help="stop early (for smoke tests)")
     parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--no-merge", action="store_true")
+    parser.add_argument("--patience", type=int, default=3,
+                        help="stop after this many evaluations without a new best val loss (0 = never)")
+    parser.add_argument("--merge", choices=["best", "last", "none"], default="best",
+                        help="which adapter to merge into <out>/merged at the end")
     args = parser.parse_args()
 
     from peft import LoraConfig, PeftModel, get_peft_model
@@ -178,6 +194,8 @@ def main() -> None:
         if scaler and state.get("scaler"):
             scaler.load_state_dict(state["scaler"])
 
+    best = (state or {}).get("best") or {"val_loss": float("inf"), "step": 0, "bad_evals": 0}
+    stop_early = False
     log = (args.out / "train_log.jsonl").open("a", encoding="utf-8")
     model.train()
     step, micro = start_step, 0
@@ -228,15 +246,31 @@ def main() -> None:
                 print(json.dumps({"step": step, "val_loss": round(val, 4)}), flush=True)
                 log.write(json.dumps({"step": step, "val_loss": round(val, 4)}) + "\n")
                 log.flush()
-            if step % args.save_every == 0 or step == total_steps:
-                save_checkpoint(model, optimizer, scaler, step, args.out)
-            if step >= total_steps:
+                if val < best["val_loss"]:
+                    best = {"val_loss": val, "step": step, "bad_evals": 0}
+                    _atomic_save(model, args.out / "best", {"best.json": best})
+                    print(json.dumps({"step": step, "new_best": round(val, 4)}), flush=True)
+                else:
+                    best["bad_evals"] += 1
+                    stop_early = args.patience > 0 and best["bad_evals"] >= args.patience
+            if step % args.save_every == 0 or step == total_steps or stop_early:
+                save_checkpoint(model, optimizer, scaler, step, best, args.out)
+            if stop_early:
+                print(f"early stop: val loss has not improved since step {best['step']}", flush=True)
+            if step >= total_steps or stop_early:
                 break
+        if stop_early:
+            break
         epoch += 1
 
     model.save_pretrained(args.out / "adapter")
     tokenizer.save_pretrained(args.out / "adapter")
-    if not args.no_merge:
+    if args.merge == "best" and (args.out / "best").exists():
+        from peft.utils import load_peft_weights, set_peft_model_state_dict
+
+        set_peft_model_state_dict(model, load_peft_weights(str(args.out / "best"), device=device))
+        print(f"merging best adapter from step {best['step']} (val loss {best['val_loss']:.4f})", flush=True)
+    if args.merge != "none":
         merged = model.merge_and_unload()
         merged = merged.to(torch.bfloat16)  # bf16 never overflows; MLX loads it natively
         merged.config.use_cache = True
