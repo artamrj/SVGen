@@ -127,10 +127,20 @@ flowchart LR
 
 ## Roadmap
 
-- [x] Black-and-white line icons on a laptop (v0.3)
-- [ ] Larger base model (1.5B) trained on a cloud GPU
-- [ ] Visual captions from a vision model, instead of names and tags
-- [ ] Reinforcement learning from rendered output (GRPO + SigLIP2 reward)
+Today SVGen draws what it has seen, and combines parts of it. The goal is to draw *anything* you describe.
+
+- [x] Black-and-white line icons, trained on a laptop (v0.3)
+- [ ] Larger base model (1.5B) on a cloud GPU ([#1](https://github.com/artamrj/SVGen/issues/1), in progress)
+
+**Toward drawing anything**
+
+- [ ] **More, more varied data:** SVG-1M, SVGX and filled sets with animals, objects and scenes ([#2](https://github.com/artamrj/SVGen/issues/2))
+- [ ] **Part-by-part captions:** a vision model writes "round head, two triangle ears", so the model learns description → shapes ([#3](https://github.com/artamrj/SVGen/issues/3))
+- [ ] **Think, then draw:** plan the shapes first, then write the SVG, like Reason-SVG ([#4](https://github.com/artamrj/SVGen/issues/4))
+- [ ] **Learn from the rendered result:** RL (GRPO) with a SigLIP2 "does it look like the prompt?" reward ([#5](https://github.com/artamrj/SVGen/issues/5))
+
+**Later**
+
 - [ ] Filled icons, then color
 - [ ] Rust runtime inference (the safety validator already exists in `runtime/`)
 
