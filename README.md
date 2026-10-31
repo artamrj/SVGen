@@ -156,7 +156,8 @@ Today SVGen draws what it has seen, and combines parts of it. The goal is to dra
 
 **Toward drawing anything**
 
-- [ ] **More, more varied data:** SVG-1M, SVGX and filled sets with animals, objects and scenes ([#2](https://github.com/artamrj/SVGen/issues/2))
+- [x] **More, more varied data:** 9 more MIT/Apache line-icon sets, 8.9k → 21.5k icons, nearly twice the animals ([#2](https://github.com/artamrj/SVGen/issues/2)). SVG-1M and SVGX are non-commercial only, so they are not used.
+- [ ] **Train v0.5 on the new data** and compare with `make eval`
 - [ ] **Part-by-part captions:** a vision model writes "round head, two triangle ears", so the model learns description → shapes ([#3](https://github.com/artamrj/SVGen/issues/3))
 - [ ] **Think, then draw:** plan the shapes first, then write the SVG, like Reason-SVG ([#4](https://github.com/artamrj/SVGen/issues/4))
 - [ ] **Learn from the rendered result:** RL (GRPO) with a SigLIP2 "does it look like the prompt?" reward ([#5](https://github.com/artamrj/SVGen/issues/5))
@@ -172,4 +173,4 @@ Code: [MIT](LICENSE). The model adapter builds on Qwen2.5-Coder (Apache-2.0), an
 
 ## Credits
 
-Icons for training: [Lucide](https://lucide.dev) (ISC), [Tabler Icons](https://tabler.io/icons), [Iconoir](https://iconoir.com), and [Heroicons](https://heroicons.com) (MIT). Base model: [Qwen2.5-Coder](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct).
+Icons for training: [Lucide](https://lucide.dev) (ISC), [Tabler Icons](https://tabler.io/icons), [Iconoir](https://iconoir.com), and [Heroicons](https://heroicons.com) (MIT). Since v0.5 also [IconPark](https://github.com/bytedance/IconPark) and [MingCute](https://github.com/Richard9394/MingCute) (Apache-2.0), plus [Hugeicons](https://hugeicons.com), [TDesign](https://github.com/Tencent/tdesign-icons), [ProIcons](https://github.com/ProCode-Software/proicons), [Majesticons](https://github.com/halfmage/majesticons), [Meteor Icons](https://github.com/zkreations/icons), [Akar Icons](https://github.com/artcoholic/akar-icons) and [Humbleicons](https://github.com/zraly/humbleicons) (MIT), all through [Iconify](https://iconify.design). Details: [docs/dataset_format.md](docs/dataset_format.md). Base model: [Qwen2.5-Coder](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct).

@@ -14,13 +14,15 @@ setup:
 	python3 -m venv .venv
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
-## Download the open-source icon packs used for training (~10 MB).
+## Download the open-source icon packs used for training (~20 MB).
 data-download:
 	$(PYTHON) -m svgen.download --out data/raw/extracted
 
 ## Clean every icon into the canonical format and write train/valid/test splits.
+## SOURCES=classic rebuilds the exact v0.3/v0.4 data (the 4 original packs only).
+SOURCES ?= all
 data:
-	$(PYTHON) -m svgen.data --raw data/raw/extracted --out data/processed
+	$(PYTHON) -m svgen.data --raw data/raw/extracted --out data/processed --sources $(SOURCES)
 
 ## LoRA fine-tune on the GPU at low CPU priority, so the laptop stays usable.
 ## Stages 1-2 (5000 steps) use the plain dataset (`--root-bonus 0`); stage 3 (1200 steps)

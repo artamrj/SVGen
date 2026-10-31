@@ -1,8 +1,13 @@
 """Build the monochrome line-icon dataset from open-source icon packs.
 
-Sources (all 24x24 line icons, permissive licenses):
+Sources (all line icons, permissive licenses):
   lucide-static (ISC), @tabler/icons outline (MIT), iconoir regular (MIT),
-  heroicons 24/outline (MIT).
+  heroicons 24/outline (MIT), plus the Iconify sets in `svgen.download.ICONIFY_SETS`
+  (MIT / Apache-2.0), converted to the 24x24 canonical format by `svgen.svg.import_icon`.
+
+The held-out concepts are frozen in data/heldout/, so evaluation scores stay
+comparable when sources are added. Icons of new sources that belong to a held-out
+concept are left out of every split.
 
 Download the packs with `make data-download`, then run
 `python -m svgen.data --raw data/raw/extracted --out data/processed`.
@@ -21,7 +26,8 @@ from pathlib import Path
 from typing import Iterator
 
 from svgen.prompting import chat_record
-from svgen.svg import SvgError, extract_body
+from svgen.download import ICONIFY_SETS
+from svgen.svg import SvgError, extract_body, import_icon
 
 
 @dataclass
@@ -56,7 +62,46 @@ def _read_icons(directory: Path, source: str, meta: dict[str, dict]) -> Iterator
         yield Icon(source, name, body, list(info.get("tags", [])), str(info.get("category", "")))
 
 
-def load_icons(raw: Path) -> tuple[list[Icon], Counter[str]]:
+# Original packs. Held-out concepts were drawn from these, and only these fill valid/test.
+CLASSIC_SOURCES = ("lucide", "tabler", "iconoir", "heroicons")
+HELDOUT = Path(__file__).resolve().parent.parent / "data" / "heldout"
+
+# Style suffixes that are not part of the concept name, per Iconify set.
+_ICONIFY_SUFFIXES = {"mingcute": ("-line",), "majesticons": ("-line",)}
+# IconPark numbers its variants with words ("bank-card-one"); digits are already dropped from prompts.
+_NUMBER_WORDS = {w: str(k) for k, w in enumerate("zero one two three four five six seven eight nine ten".split())}
+
+
+def _read_iconify(package: Path, prefix: str) -> Iterator[Icon | str]:
+    data = json.loads((package / "icons.json").read_text(encoding="utf-8"))
+    source = prefix.removesuffix("-outline")
+    tags: dict[str, list[str]] = {}
+    for category, names in (data.get("categories") or {}).items():
+        for name in names:
+            tags.setdefault(name, []).append(category.lower())
+    width, height = data.get("width", 16), data.get("height", 16)
+    for name, icon in sorted(data["icons"].items()):
+        if icon.get("hidden"):
+            continue
+        box = f'{icon.get("left", 0)} {icon.get("top", 0)} {icon.get("width", width)} {icon.get("height", height)}'
+        svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{box}">{icon["body"]}</svg>'
+        try:
+            body = import_icon(svg)
+        except SvgError as exc:
+            yield f"{source}: {exc}"
+            continue
+        concept = name
+        for suffix in _ICONIFY_SUFFIXES.get(prefix, ()):
+            concept = concept.removesuffix(suffix)
+        if prefix == "icon-park-outline":
+            head, _, last = concept.rpartition("-")
+            if head and last in _NUMBER_WORDS:
+                concept = f"{head}-{_NUMBER_WORDS[last]}"
+        yield Icon(source, concept, body, tags.get(name, []))
+
+
+def load_icons(raw: Path, sources: set[str] | None = None) -> tuple[list[Icon], Counter[str]]:
+    """Load every downloaded pack. `sources` limits which ones (None = all)."""
     icons: list[Icon] = []
     rejected: Counter[str] = Counter()
 
@@ -67,16 +112,22 @@ def load_icons(raw: Path) -> tuple[list[Icon], Counter[str]]:
             else:
                 rejected[re.sub(r"[-\d.]+$", "", item)] += 1
 
-    if pack := _find_pack(raw, "lucide-static"):
+    def wanted(source: str) -> bool:
+        return sources is None or source in sources
+
+    if wanted("lucide") and (pack := _find_pack(raw, "lucide-static")):
         tags = json.loads((pack / "tags.json").read_text(encoding="utf-8"))
         collect(_read_icons(pack / "icons", "lucide", {k: {"tags": v} for k, v in tags.items()}))
-    if pack := _find_pack(raw, "tabler-icons"):
+    if wanted("tabler") and (pack := _find_pack(raw, "tabler-icons")):
         meta = json.loads((pack / "icons.json").read_text(encoding="utf-8"))
         collect(_read_icons(pack / "icons" / "outline", "tabler", meta))
-    if pack := _find_pack(raw, "iconoir"):
+    if wanted("iconoir") and (pack := _find_pack(raw, "iconoir")):
         collect(_read_icons(pack / "icons" / "regular", "iconoir", {}))
-    if pack := _find_pack(raw, "heroicons"):
+    if wanted("heroicons") and (pack := _find_pack(raw, "heroicons")):
         collect(_read_icons(pack / "24" / "outline", "heroicons", {}))
+    for prefix in ICONIFY_SETS:
+        if wanted(prefix.removesuffix("-outline")) and (pack := _find_pack(raw, f"iconify-json-{prefix}-")):
+            collect(_read_iconify(pack, prefix))
     return icons, rejected
 
 
@@ -159,10 +210,33 @@ def variant_names(icons: list[Icon]) -> set[tuple[str, str]]:
     return variants
 
 
+def load_heldout(directory: Path = HELDOUT) -> tuple[set[str], set[str], list[dict]] | None:
+    """Frozen (valid groups, test groups, test icons), or None to draw a fresh split."""
+    if not (directory / "split.json").exists():
+        return None
+    split = json.loads((directory / "split.json").read_text(encoding="utf-8"))
+    test_icons = json.loads((directory / "test_icons.json").read_text(encoding="utf-8"))
+    return set(split["valid_groups"]), set(split["test_groups"]), test_icons
+
+
+def frozen_split(icons: list[Icon], valid_groups: set[str], test_groups: set[str]) -> tuple[dict[str, list[Icon]], int]:
+    """Split by the frozen held-out concepts. Only the original packs fill valid and test,
+    so their contents never change; new-source icons of held-out concepts are dropped."""
+    split: dict[str, list[Icon]] = {"train": [], "valid": [], "test": []}
+    dropped = 0
+    for icon in icons:
+        key = "test" if icon.group in test_groups else "valid" if icon.group in valid_groups else "train"
+        if key != "train" and icon.source not in CLASSIC_SOURCES:
+            dropped += 1
+            continue
+        split[key].append(icon)
+    return split, dropped
+
+
 def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars: int, n_valid: int, n_test: int,
-          root_bonus: int = 3) -> dict:
+          root_bonus: int = 3, sources: set[str] | None = None, heldout: Path | None = HELDOUT) -> dict:
     rng = random.Random(seed)
-    icons, rejected = load_icons(raw)
+    icons, rejected = load_icons(raw, sources)
     seen: set[str] = set()
     unique: list[Icon] = []
     too_long = 0
@@ -176,12 +250,25 @@ def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars
             continue
         unique.append(icon)
 
-    split = split_groups(unique, rng, n_valid, n_test)
+    frozen = load_heldout(heldout) if heldout else None
+    dropped_heldout = 0
+    if frozen:
+        valid_groups, test_groups, test_icons = frozen
+        split, dropped_heldout = frozen_split(unique, valid_groups, test_groups)
+        # Keep the frozen order: `svgen.evaluate` samples from it with a fixed seed.
+        by_key = {(icon.source, icon.name): icon for icon in split["test"]}
+        missing = [t["name"] for t in test_icons if (t["source"], t["name"]) not in by_key]
+        if missing or len(by_key) != len(test_icons):
+            raise SystemExit(f"held-out test icons do not match the downloaded packs (missing: {missing[:5]})")
+        split["test"] = [by_key[(t["source"], t["name"])] for t in test_icons]
+    else:
+        split = split_groups(unique, rng, n_valid, n_test)
     variants = variant_names(unique)
     out.mkdir(parents=True, exist_ok=True)
     counts: dict[str, int] = {}
     for name, items in split.items():
-        rng.shuffle(items)
+        if not (frozen and name == "test"):
+            rng.shuffle(items)
         rows = []
         for icon in items:
             n = 1
@@ -204,7 +291,10 @@ def build(raw: Path, out: Path, seed: int, prompts_per_icon: int, max_body_chars
         "dropped_duplicates": len(icons) - len(unique) - too_long,
         "dropped_too_long": too_long,
         "rejected": dict(rejected),
+        "dropped_heldout_concepts": dropped_heldout,
+        "frozen_split": bool(frozen),
         "by_source": dict(Counter(icon.source for icon in unique)),
+        "concepts": len({icon.group for icon in unique}),
         "variant_icons": len(variants),
         "rows": counts,
         "avg_body_chars": round(sum(len(i.body) for i in unique) / max(1, len(unique)), 1),
@@ -224,8 +314,13 @@ def main() -> None:
                         help="extra prompts for base icons; variants get 1. 0 = no rebalancing (stages 1-2)")
     parser.add_argument("--valid", type=int, default=120)
     parser.add_argument("--test", type=int, default=150)
+    parser.add_argument("--sources", default="all",
+                        help="comma-separated sources to load, 'classic' for the original 4 packs (v0.3/v0.4 data), or 'all'")
+    parser.add_argument("--fresh-split", action="store_true", help="draw a new random split instead of data/heldout/")
     args = parser.parse_args()
-    report = build(args.raw, args.out, args.seed, args.prompts_per_icon, args.max_body_chars, args.valid, args.test, args.root_bonus)
+    sources = None if args.sources == "all" else set(CLASSIC_SOURCES) if args.sources == "classic" else set(args.sources.split(","))
+    report = build(args.raw, args.out, args.seed, args.prompts_per_icon, args.max_body_chars, args.valid, args.test,
+                   args.root_bonus, sources, heldout=None if args.fresh_split else HELDOUT)
     print(json.dumps(report, indent=2))
 
 

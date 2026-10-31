@@ -275,6 +275,146 @@ def extract_body(svg_text: str) -> str:
     return body
 
 
+# --- importing icons from other sets ---------------------------------------------
+#
+# Other icon sets use other grids (48x48, 21x21), nest shapes in <g> groups and
+# mix line and filled styles. `import_icon` maps a line icon onto the canonical
+# 24x24 body and rejects anything that is not line art. `extract_body` above
+# stays strict, so the original training packs build exactly as before.
+
+_INHERITED = ("fill", "stroke", "stroke-width")
+# Styling that the canonical format cannot express. Icons that use it are rejected.
+_UNSUPPORTED_STYLE = ("opacity", "fill-opacity", "stroke-opacity", "stroke-dasharray", "mask", "clip-path", "filter", "style")
+STROKE_WIDTH_RANGE = (1.0, 2.5)  # after scaling to 24x24
+_MAX_FILLED_SIZE = 4.0  # filled circles/rects up to this size are dots, not filled-style art
+
+
+def _square_viewbox(root: ElementTree.Element) -> tuple[float, float, float]:
+    """Return (min_x, min_y, scale to 24) for a square viewBox."""
+    parts = root.attrib.get("viewBox", VIEWBOX).replace(",", " ").split()
+    if len(parts) != 4:
+        raise SvgError("bad viewBox")
+    min_x, min_y, width, height = (_parse_float(p, "viewBox") for p in parts)
+    if width <= 0 or abs(width - height) > 1e-6:
+        raise SvgError("viewBox is not square")
+    return min_x, min_y, 24.0 / width
+
+
+def _scale_segments(segments: list[tuple[str, list[float]]], dx: float, dy: float, s: float) -> list[tuple[str, list[float]]]:
+    out: list[tuple[str, list[float]]] = []
+    for command, values in segments:
+        if command == "H":
+            values = [(values[0] - dx) * s]
+        elif command == "V":
+            values = [(values[0] - dy) * s]
+        elif command == "A":
+            rx, ry, rotation, large, sweep, x, y = values
+            values = [rx * s, ry * s, rotation, large, sweep, (x - dx) * s, (y - dy) * s]
+        else:
+            values = [(v - (dx if k % 2 == 0 else dy)) * s for k, v in enumerate(values)]
+        out.append((command, values))
+    return out
+
+
+def _scaled_geometry(tag: str, attrib: dict[str, str], dx: float, dy: float, s: float) -> dict[str, str]:
+    """Rewrite the geometry attributes of one shape into 24x24 canvas units."""
+    if tag in ("polyline", "polygon"):
+        attrib = {"d": _points_to_path(attrib.get("points", ""), close=tag == "polygon")}
+        tag = "path"
+    if tag == "path":
+        return {"d": format_path(_scale_segments(path_to_absolute(attrib.get("d", "")), dx, dy, s))}
+    out: dict[str, str] = {}
+    for name in GEOMETRY_ATTRS.get(tag, ()):
+        if name not in attrib:
+            continue  # normalize_element reports missing attributes
+        value = _parse_float(attrib[name], name)
+        if name in ("cx", "x", "x1", "x2"):
+            value -= dx
+        elif name in ("cy", "y", "y1", "y2"):
+            value -= dy
+        out[name] = repr(value * s)
+    return out
+
+
+def _is_none(value: str) -> bool:
+    return value.strip().lower() in ("none", "transparent")
+
+
+def import_icon(svg_text: str) -> str:
+    """Convert a line icon from any square grid into the canonical 24x24 body.
+
+    Groups without transforms are flattened (fill and stroke are inherited), the
+    grid is scaled to 24x24, and invisible helper shapes are dropped. Filled
+    paths, transparency, dashes and stroke widths far from the house style are
+    rejected, because the canonical format draws every shape with one stroke.
+    """
+    try:
+        root = ElementTree.fromstring(svg_text)
+    except ElementTree.ParseError as exc:
+        raise SvgError("invalid XML") from exc
+    if _strip_ns(root.tag) != "svg":
+        raise SvgError("root must be svg")
+    dx, dy, s = _square_viewbox(root)
+    # SVG defaults: shapes are filled black and not stroked.
+    defaults = {"fill": "currentColor", "stroke": "none", "stroke-width": "1"}
+
+    def inherit(element: ElementTree.Element, parent: dict[str, str]) -> dict[str, str]:
+        attrib = {_strip_ns(k): v for k, v in element.attrib.items()}
+        if "transform" in attrib:
+            raise SvgError("transforms are not supported")
+        for name in _UNSUPPORTED_STYLE:
+            if name in attrib and not (name.endswith("opacity") and attrib[name].strip() in ("1", "1.0")):
+                raise SvgError(f"unsupported style: {name}")
+        return {**parent, **{k: attrib[k] for k in _INHERITED if k in attrib}}
+
+    shapes: list[str] = []
+
+    def walk(element: ElementTree.Element, style: dict[str, str]) -> None:
+        for child in element:
+            tag = _strip_ns(child.tag)
+            if tag in ("title", "desc"):
+                continue
+            child_style = inherit(child, style)
+            if tag == "g":
+                walk(child, child_style)
+                continue
+            if len(child):
+                raise SvgError("nested elements are not supported")  # e.g. <animate> inside a path
+            if tag not in GEOMETRY_ATTRS and tag not in ("polyline", "polygon"):
+                raise SvgError(f"unsupported element: {tag}")
+            filled = not _is_none(child_style["fill"])
+            stroked = not _is_none(child_style["stroke"])
+            if not filled and not stroked:
+                continue  # invisible helper shape
+            if stroked:
+                width = _parse_float(child_style["stroke-width"], "stroke-width") * s
+                if not STROKE_WIDTH_RANGE[0] <= width <= STROKE_WIDTH_RANGE[1]:
+                    raise SvgError("stroke width outside the line-icon range")
+            attrib = {_strip_ns(k): v for k, v in child.attrib.items()}
+            geometry = _scaled_geometry(tag, attrib, dx, dy, s)
+            if filled:
+                if "d" in geometry:
+                    raise SvgError("filled paths are not line art")
+                size = max(_parse_float(geometry.get(k, "0"), k) for k in ("r", "rx", "ry", "width", "height"))
+                if tag in ("circle", "ellipse"):
+                    size *= 2
+                if size > _MAX_FILLED_SIZE:
+                    raise SvgError("large filled shape is not line art")
+            canonical_tag = "path" if "d" in geometry else tag
+            element = ElementTree.Element(canonical_tag, {**geometry, "fill": "currentColor" if filled else "none"})
+            shape = normalize_element(element)
+            if shape is not None:
+                shapes.append(shape.to_xml())
+
+    walk(root, inherit(root, defaults))
+    if not shapes:
+        raise SvgError("icon has no visible shapes")
+    body = "".join(shapes)
+    if len(body) > MAX_BODY_CHARS:
+        raise SvgError("icon is too large")
+    return body
+
+
 def parse_body(body: str) -> list[Shape]:
     """Strictly parse model output. Raises SvgError if it is not canonical-safe."""
     try:
