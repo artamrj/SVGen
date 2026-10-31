@@ -5,7 +5,7 @@ N ?= 4
 ADAPTER ?= models/svgen-0.3-mono
 BASE ?= mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16
 
-.PHONY: convert train-stage1 train-stage2 train-stage3 setup test test-python test-rust check cleanup data-download data train release eval svg fuse \
+.PHONY: build-1.5b convert train-stage1 train-stage2 train-stage3 setup test test-python test-rust check cleanup data-download data train release eval svg fuse \
 	legacy-validate-dataset legacy-train-tokenizer legacy-train-model legacy-train legacy-export legacy-svg
 
 # ---- SVGen 0.3 Mono (MLX, Apple Silicon) -------------------------------------
@@ -58,6 +58,11 @@ MERGED ?= runs/svgen-1.5b/merged
 NAME ?= svgen-1.5b
 convert:
 	$(PYTHON) -m mlx_lm convert --hf-path $(MERGED) --mlx-path models/$(NAME) -q --q-bits 8
+
+## Rebuild the v0.4 (1.5B) MLX model from the committed PEFT adapter (~1.5 GB, needs torch + peft).
+build-1.5b:
+	$(PYTHON) -m svgen.merge_adapter --adapter models/svgen-0.4-lora --out runs/svgen-1.5b/merged
+	$(MAKE) convert MERGED=runs/svgen-1.5b/merged NAME=svgen-1.5b
 
 ## Merge the adapter into a standalone MLX model in exports/.
 fuse:

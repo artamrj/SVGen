@@ -15,3 +15,4 @@ data/raw/
 data/processed/
 runs/
 models/svgen-1.5b*/
+models/svgen-0.4-lora/adapter_model.safetensors

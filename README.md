@@ -9,9 +9,11 @@
 ![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Apple Silicon](https://img.shields.io/badge/runs%20on-Apple%20Silicon-black.svg)
 
-A small language model fine-tuned to draw black-and-white line icons as real, editable SVG code. Trained and run on a MacBook.
+A small language model fine-tuned to draw black-and-white line icons as real, editable SVG code. Runs locally on a MacBook.
 
-![SVGen samples](docs/showcase.png)
+![0.5B vs 1.5B](docs/compare_0.5b_vs_1.5b.png)
+
+*Same prompts, two models: v0.3 (0.5B, trained on a MacBook) above, v0.4 (1.5B, trained on Colab) below.*
 
 </div>
 
@@ -41,6 +43,23 @@ flowchart LR
 
 The model writes **only shapes** (`path`, `circle`, `rect`, `line`, `ellipse`). SVGen adds the `<svg>` wrapper, so every output is well-formed, safe (no scripts or external links), and recolorable with CSS `color`.
 
+## Two versions
+
+| | **v0.3 Mono** | **v0.4 Colab** (current) |
+|---|---|---|
+| Base model | Qwen2.5-Coder-0.5B | Qwen2.5-Coder-1.5B |
+| Trained on | MacBook Pro M1 Pro, MLX, ~5 h | Google Colab GPU, PyTorch, ~4.5 h |
+| Size on disk | 35 MB adapter (in this repo) | 141 MB adapter ([v0.4 release](https://github.com/artamrj/SVGen/releases/tag/v0.4)) → 1.5 GB 8-bit model via `make build-1.5b` |
+| SigLIP2 match, unseen icons | 0.165 | **0.180** (real icons: 0.184) |
+| SigLIP2 match, free prompts | 0.146 | **0.185** |
+| Valid SVG samples | 98.8% | 98.8% |
+
+Both stay in the repo: v0.3 is the default because it is tiny and committed; v0.4 is the better model.
+
+```bash
+make svg PROMPT="star" BASE=models/svgen-1.5b ADAPTER=none OUT=star.svg   # v0.4
+```
+
 ## Training
 
 ```mermaid
@@ -59,25 +78,28 @@ flowchart TD
     E --> F["Evaluate<br/>validity + SigLIP2 match"]
 ```
 
-| | |
-|---|---|
-| **Base model** | Qwen2.5-Coder-0.5B-Instruct |
-| **Method** | LoRA, rank 32, all layers (17.6M trainable params) |
-| **Data** | 8,873 unique 24×24 line icons, ~24k prompt–SVG pairs |
-| **Hardware** | MacBook Pro M1 Pro, 16 GB, Apple MLX |
-| **Training time** | ~5 h at low priority, laptop stayed usable |
+Same data and recipe for both versions: LoRA rank 32 on all layers, loss only on the SVG answer, 8,873 unique 24×24 line icons (~24k prompt–SVG pairs) split by concept so test icons are never seen in training.
+
+| | v0.3 | v0.4 |
+|---|---|---|
+| Trainer | `mlx_lm lora`, 3 stages, 6,200 steps | `svgen.train_cuda` (PyTorch + PEFT), 4,485 steps |
+| Hardware | M1 Pro 16 GB, laptop stayed usable | Colab GPU (fp16) |
+| Best val loss | 0.384 | 0.393 at step 2000, then overfit to 0.451 |
+
+The v0.4 run kept training after its best point and started memorizing. The trainer now saves the best checkpoint and stops early, so the next run should land higher still.
 
 ## Results
 
-Measured on held-out concepts the model never saw in training:
+On 40 held-out concepts plus 20 free prompts, 4 samples each, best pick by SigLIP2:
 
-| Metric | Score |
-|---|---|
-| Valid SVG samples | **98.8%** |
-| Prompts with a usable icon | **100%** |
-| SigLIP2 text match | **0.165** (real icons: 0.184) |
+| Metric | v0.3 | v0.4 |
+|---|---|---|
+| Valid SVG samples | 98.8% | 98.8% |
+| Prompts with a usable icon | 100% | 100% |
+| SigLIP2 match, unseen icons | 0.165 | **0.180** (real icons: 0.184) |
+| SigLIP2 match, free prompts | 0.146 | **0.185** |
 
-Common UI concepts work well. Icons that are one long precise shape (star, rocket, bicycle) and unusual prompts are still weak. Full details are in the [model card](docs/model_card_svgen_0.3.md).
+v0.3 draws common UI concepts well but fails on long precise shapes (star, rocket, bicycle). v0.4 gets those right and is nearly on par with hand-drawn icons on unseen concepts. Model cards: [v0.3](docs/model_card_svgen_0.3.md) · [v0.4](docs/model_card_svgen_0.4.md).
 
 ## Quickstart
 
@@ -130,7 +152,7 @@ flowchart LR
 Today SVGen draws what it has seen, and combines parts of it. The goal is to draw *anything* you describe.
 
 - [x] Black-and-white line icons, trained on a laptop (v0.3)
-- [ ] Larger base model (1.5B) on a cloud GPU ([#1](https://github.com/artamrj/SVGen/issues/1), in progress)
+- [x] Larger base model (1.5B) on a cloud GPU, v0.4 ([#1](https://github.com/artamrj/SVGen/issues/1))
 
 **Toward drawing anything**
 
